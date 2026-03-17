@@ -1,0 +1,50 @@
+name: Deploy HireOS to EC2
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          # Create SSH directory and known_hosts
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          # Add EC2 to known_hosts (skip strict host key checking for now)
+          ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts 2>/dev/null || true
+          
+          # Deploy via SSH
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'EOF'
+            cd ~/hireos
+            git pull origin master || git pull origin main
+            npm install --omit=dev
+            ./deploy.sh
+          EOF
+
+      - name: Health Check
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          sleep 5
+          curl -f http://$EC2_HOST/ || exit 1
+          curl -f http://$EC2_HOST/health || exit 1
+          echo "✅ HireOS health check passed!"
+
+      - name: Deployment Success
+        run: |
+          echo "🚀 HireOS deployed successfully to http://${{ secrets.EC2_HOST }}"
