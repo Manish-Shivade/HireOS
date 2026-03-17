@@ -1,0 +1,42 @@
+
+services:
+
+  # ── The Node.js App ──────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hireos-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    expose:
+      - "3000"
+    networks:
+      - hireos-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ── Nginx Reverse Proxy ──────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: hireos-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+    networks:
+      - hireos-network
+
+# ── Shared Private Network ───────────────────────────
+networks:
+  hireos-network:
+    driver: bridge

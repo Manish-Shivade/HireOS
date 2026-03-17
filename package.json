@@ -1,0 +1,13 @@
+{
+  "name": "hireos",
+  "version": "1.0.0",
+  "description": "HireOS - AI-powered hiring operating system",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
